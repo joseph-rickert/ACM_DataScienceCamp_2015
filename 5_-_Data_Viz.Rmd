@@ -1,0 +1,72 @@
+---
+title: "5 - Data Visualization"
+author: "JB Rickert"
+date: "10/19/15"
+output: html_document
+---
+
+## CODE FOR NILE DATA TIME SERIES
+```{r}
+library(ggplot2)            # for plotting functions
+library(car)                # for the recode function, rc
+library(reshape2)           # for melt function to build long form data frame
+library(pracma)             # for Nile river data
+library(xts)                 # for time series
+library(dygraphs)           # for interactive javaScript ploting
+```   
+
+### Fetch The Data and Cnvert To Long Form
+Many data frames arenaturally in "wide" form. To plot this data with ggplot2 te data must be transformed into "long" form. 
+
+```{r}
+data(nile)
+head(nile)
+
+nile_dat <- melt(nile,idvar="Year",measure.vars=month.abb,variable.name="Month",value.name="Obs")
+nile_dat_long <- nile_dat[with(nile_dat,order(Year,Month)),]         # sort
+head(nile_dat_long)
+dim(nile_dat_long)
+
+# Make a date variable
+nile_dat_long$Date <- paste(with(nile_dat_long,Date<- paste(Month,"-","15","-",as.character(Year),sep="")))
+nile_dat_long$Date <- as.Date(nile_dat_long$Date,format="%b-%d-%Y")
+
+head(nile_dat_long)
+
+# Make a date variable
+nile_dat_long$Date <- paste(with(nile_dat_long,Date<- paste(Month,"-","15","-",as.character(Year),sep="")))
+nile_dat_long$Date <- as.Date(nile_dat_long$Date,format="%b-%d-%Y")
+```  
+
+### Plot the Nile Data
+
+```{r}
+# Plot the time series
+p <- ggplot(nile_dat_long[100:300,],aes(x=Date,y=Obs))
+p + geom_line() + geom_point(shape=1,col="red") + 
+  ylab("Flow in cubic meters / second") + 
+  ggtitle("Monthly Flow of Nile River at Dongola Station")
+
+# Boxplots of monthly flows
+b <- ggplot(nile_dat_long,aes(factor(Month),Obs))
+b + geom_boxplot() +
+  xlab("Month") +
+  ylab("Flow in cubic meters / second") + 
+  ggtitle("Variation of Flow at Dongola Station by Month")
+```
+
+## Creat An Interactive Plot With a JavaScript Library
+```{r}
+
+# Make into a time series object
+nile_ts <- xts(nile_dat_long$Obs,
+               order.by=nile_dat_long$Date,
+               frequency=12,start=c(1871,1))
+
+# Plot wit htmlwidget dygraph
+dygraph(nile_ts,ylab="cubic m / s", 
+        main="Nile Monthly Flow Data") %>%
+dySeries("V1",label="Flow") %>%
+dyRangeSelector(dateWindow = c("1871-01-01","1984-12-01"))
+```
+
